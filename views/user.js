@@ -1,6 +1,6 @@
 const Joi = require('joi')
 const bcrypt = require('bcrypt')
-const userModel = require('../models/user')
+const models = require('../models/user')
 const customError = require('../errorhandler/CustomError.js')
 const MyJWT = require('../tokenhandler/MyJWT')
 const jwt = require('jsonwebtoken')
@@ -38,7 +38,7 @@ async function signUpView(req, res, next){
                     }
                    
                     try {
-                        const isExists = await userModel.isEmailAlreadyExists(data.email)
+                        const isExists = await models.userModel.isEmailAlreadyExists(data.email)
                     
                         if (isExists){
                             next(customError.alreadyExist("Email Already Exists"))
@@ -46,7 +46,7 @@ async function signUpView(req, res, next){
                         else{
     
                             try {
-                                const user = await new userModel(userdata)
+                                const user = await new models.userModel(userdata)
                                 user.save()
                                 return res.json(user)
                                 
@@ -84,7 +84,7 @@ async function loginView(req, res, next){
 
         const email = value.email
 
-        let getUser = await userModel.findOne({
+        let getUser = await models.userModel.findOne({
             email
         })
         const hashedPassword = getUser.password
@@ -99,6 +99,15 @@ async function loginView(req, res, next){
                 let access_token = MyJWT.create(payload, "AccessSecret")
                 let refresh_token = MyJWT.refresh(payload, "RefreshSecret")
                 
+                
+                
+                addNewWhiteList = await new models.whiteListTokenModel({
+                    token : refresh_token
+                })
+                addNewWhiteList.save()
+           
+
+
                 return res.json({
                     access_token,
                     refresh_token
@@ -120,18 +129,59 @@ async function loginView(req, res, next){
 }
 
 async function refreshToken(req, res, next){
-    let decoded = jwt.decode(req.body.refresh_token)
-    data = {
-        "username" : decoded.username,
-        "email" : decoded.email
-    }
-    let access_token = MyJWT.create(data, "AccessSecret")
-    let refresh_token = MyJWT.refresh(data, "RefreshSecret")
-    return res.json({
-        access_token, refresh_token
+    actualRefresh = req.body.refresh_token
+
+    checkWhiteList = await models.whiteListTokenModel.findOne({
+        token : actualRefresh
     })
+
+    if(checkWhiteList){
+
+        let decoded = jwt.decode(actualRefresh)
+        data = {
+            "username" : decoded.username,
+            "email" : decoded.email
+        }
+        let access_token = MyJWT.create(data, "AccessSecret")
+        let refresh_token = MyJWT.refresh(data, "RefreshSecret")
+        return res.json({
+            access_token, refresh_token
+        })
+    }
+    else{
+        next(customError.notFoundError("Invalid Refresh Token"))
+    }
+
 }
 
+
+async function logoutView(req, res, next){
+    actualRefresh = req.body.refresh_token
+
+    checkWhiteList = await models.whiteListTokenModel.findOne({
+        token : actualRefresh
+    })
+
+    if(checkWhiteList){
+        try {
+            await models.whiteListTokenModel.deleteOne({
+                token : actualRefresh
+            })
+            return res.json({
+                "msg" : "logged Out"
+            })
+        } catch (error) {
+            next(error)
+        }
+    }
+    else{
+        next(customError.notFoundError("Refresh Token Expired.."))
+    }
+
+    
+}
+
+
 module.exports = {
-    signUpView, loginView, refreshToken
+    signUpView, loginView, refreshToken, logoutView
 }

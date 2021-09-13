@@ -30,4 +30,17 @@ try {
 }
 }
 
-module.exports = mongoose.model("User", userSchema, "User")
+
+whiteListTokenSchema = new mongoose.Schema({
+    token : {
+        type : String,
+        unique: true
+    }
+})
+
+userModel = mongoose.model("User", userSchema, "User")
+whiteListTokenModel = mongoose.model("WhiteListToken", whiteListTokenSchema, "WhiteListToken")
+
+module.exports = {
+    userModel, whiteListTokenModel
+}

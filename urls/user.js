@@ -36,6 +36,7 @@ const uploader = multer({
 
 router.post('/signup', uploader.single('userImage'), userViews.signUpView);
 router.post('/login', userViews.loginView);
+router.post('/logout', auth.verifyAccessToken ,userViews.logoutView);
 router.post('/refreshtoken',auth.verifyRefreshToken, userViews.refreshToken);
 
 module.exports = router
