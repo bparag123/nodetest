@@ -87,9 +87,9 @@ async function loginView(req, res, next){
         let getUser = await models.userModel.findOne({
             email
         })
-        const hashedPassword = getUser.password
         
         if(getUser){
+            const hashedPassword = getUser.password
             const result = await bcrypt.compare(req.body.password, hashedPassword )
             if(result){
                 let payload = {
